@@ -6,10 +6,20 @@
 #include <ch.hpp>
 #include <hal.h>
 #include <uavcan_stm32/uavcan_stm32.hpp>
-#include <uavcan/protocol/global_time_sync_slave.hpp>
+#include <uavcan/protocol/NodeStatus.hpp>
 
 #include "debug.h"
 #include <errno.h>
+
+#define TIME_SYNC_MASTER 1
+
+#if TIME_SYNC_MASTER
+#define UAVCAN_NODE_ID 1
+#include <uavcan/protocol/global_time_sync_master.hpp>
+#else
+#define UAVCAN_NODE_ID 2
+#include <uavcan/protocol/global_time_sync_slave.hpp>
+#endif
 
 namespace app
 {
@@ -36,20 +46,6 @@ void ledSet(bool state)
     palWritePad(GPIOC, GPIOC_LED, state);
 }
 
-int init()
-{
-    int res;
-
-    res = can.init(1000000);
-    if (res < 0)
-    {
-        goto leave;
-    }
-
-leave:
-    return res;
-}
-
 #if __GNUC__
 __attribute__((noreturn))
 #endif
@@ -65,18 +61,53 @@ void die(int status)
     }
 }
 
+void node_status_cb(const uavcan::ReceivedDataStructure<uavcan::protocol::NodeStatus>& msg)
+{
+    const uint8_t st = msg.status_code;
+    const char *st_name;
+    switch (st) {
+        case 0:
+            st_name = "STATUS_OK";
+            break;
+        case 1:
+            st_name = "STATUS_INITIALIZING";
+            break;
+        case 2:
+            st_name = "STATUS_WARNING";
+            break;
+        case 3:
+            st_name = "STATUS_CRITICAL";
+            break;
+        case 15:
+            st_name = "STATUS_OFFLINE";
+            break;
+        default:
+            st_name = "UNKNOWN_STATUS";
+            break;
+    }
+    palTogglePad(GPIOC, GPIOC_LED);
+    lowsyslog("NodeStatus from %d: %u (%s)\n", msg.getSrcNodeID().get(), st, st_name);
+}
+
 class : public chibios_rt::BaseStaticThread<8192>
 {
 public:
     msg_t main()
     {
+        int res;
+        res = can.init(1000000);
+        if (res < 0)
+        {
+            die(res);
+        }
+
         /*
          * Setting up the node parameters
          */
         Node& node = app::getNode();
 
-        node.setNodeID(64);
-        node.setName("org.uavcan.stm32_test_stm32f107");
+        node.setNodeID(UAVCAN_NODE_ID);
+        node.setName("org.uavcan.cvra_test_stm32f407");
 
         // TODO: fill software version info (version number, VCS commit hash, ...)
         // TODO: fill hardware version info (version number, unique ID)
@@ -112,12 +143,27 @@ public:
             {
                 break;
             }
-            chThdSleepMilliseconds(3000);
+            chThdSleepMilliseconds(1000);
         }
 
         /*
          * Time synchronizer
          */
+#if TIME_SYNC_MASTER
+        uavcan::UtcDuration adjustment;
+        uint64_t utc_time_init = 1234;
+        adjustment = uavcan::UtcTime::fromUSec(utc_time_init) - uavcan::UtcTime::fromUSec(0);
+        node.getSystemClock().adjustUtc(adjustment);
+
+        static uavcan::GlobalTimeSyncMaster time_sync_master(node);
+        {
+            const int res = time_sync_master.init();;
+            if (res < 0)
+            {
+                die(res);
+            }
+        }
+#else
         static uavcan::GlobalTimeSyncSlave time_sync_slave(node);
         {
             const int res = time_sync_slave.start();
@@ -125,6 +171,17 @@ public:
             {
                 die(res);
             }
+        }
+#endif
+
+        /*
+         * NodeStatus subscriber
+         */
+        uavcan::Subscriber<uavcan::protocol::NodeStatus> ns_sub(node);
+        const int ns_sub_start_res = ns_sub.start(node_status_cb);
+        if (ns_sub_start_res < 0) {
+            lowsyslog("error NodeStatus subscriber init");
+            while (1);
         }
 
         /*
@@ -134,20 +191,23 @@ public:
         node.setStatusOk();
         while (true)
         {
-            const int spin_res = node.spin(uavcan::MonotonicDuration::fromMSec(5000));
+            const int spin_res = node.spin(uavcan::MonotonicDuration::fromMSec(1000));
             if (spin_res < 0)
             {
                 lowsyslog("Spin failure: %i\n", spin_res);
             }
 
+#if TIME_SYNC_MASTER
+            time_sync_master.publish();
+#else
             lowsyslog("Time sync master: %u\n", unsigned(time_sync_slave.getMasterNodeID().get()));
+#endif
 
             lowsyslog("Memory usage: used=%u free=%u\n",
                       node.getAllocator().getNumUsedBlocks(), node.getAllocator().getNumFreeBlocks());
 
-            lowsyslog("CAN errors: %lu %lu\n",
-                      static_cast<unsigned long>(can.driver.getIface(0)->getErrorCount()),
-                      static_cast<unsigned long>(can.driver.getIface(1)->getErrorCount()));
+            lowsyslog("CAN errors: %lu\n",
+                      static_cast<unsigned long>(can.driver.getIface(0)->getErrorCount()));
 
 // #if !UAVCAN_TINY
 //             node.getLogger().setLevel(uavcan::protocol::debug::LogLevel::INFO);
@@ -193,7 +253,4 @@ int _kill(int pid, int sig) {
   return -1;
 }
 
-// void _open_r(void){
-//   return;
-// }
 } // extern "C"

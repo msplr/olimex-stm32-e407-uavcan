@@ -204,7 +204,8 @@ DLIBS =
 UDEFS  = -DUAVCAN_STM32_CHIBIOS=1 \
 		 -DUAVCAN_TOSTRING=0 \
 		 -DUAVCAN_STM32_NUM_IFACES=1 \
-		 -DUAVCAN_STM32_TIMER_NUMBER=2
+		 -DUAVCAN_STM32_TIMER_NUMBER=2 \
+		 -DUAVCAN_TINY=0
 
 # Define ASM defines here
 UADEFS =
@@ -221,11 +222,6 @@ ULIBS =
 #
 # UAVCAN
 #
-
-# default id is 0
-UAVCAN_NODE_ID ?= 0
-UDEFS += -DUAVCAN_NODE_ID=$(UAVCAN_NODE_ID)
-
 include uavcan/libuavcan/include.mk
 include src/can-driver/include.mk
 
