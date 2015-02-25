@@ -18,14 +18,14 @@
 #define _BOARD_H_
 
 /*
- * Setup for Olimex STM32-E407 (rev.D) board.
+ * Setup for Olimex STM32-E407 (rev.E) board.
  */
 
 /*
  * Board identifier.
  */
-#define BOARD_OLIMEX_STM32_E407_REV_D
-#define BOARD_NAME                  "Olimex STM32-E407 (rev.D)"
+#define BOARD_OLIMEX_STM32_E407_REV_E
+#define BOARD_NAME                  "Olimex STM32-E407 (rev.E)"
 
 /*
  * Ethernet PHY type.
