@@ -227,23 +227,4 @@ int uavcan_node_start(void *arg)
     return 0;
 }
 
-void _exit(int status){
-   (void) status;
-   chSysHalt();
-   while(TRUE){}
-}
-
-pid_t _getpid(void){
-   return 1;
-}
-
-#undef errno
-extern int errno;
-int _kill(int pid, int sig) {
-  (void)pid;
-  (void)sig;
-  errno = EINVAL;
-  return -1;
-}
-
 } // extern "C"

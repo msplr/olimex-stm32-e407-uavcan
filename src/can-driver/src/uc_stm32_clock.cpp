@@ -14,9 +14,9 @@
 /*
  * Timer instance
  */
-#define TIMX                    UAVCAN_STM32_GLUE2(TIM, UAVCAN_STM32_TIMER_NUMBER)
-#define TIMX_IRQn               UAVCAN_STM32_GLUE3(TIM, UAVCAN_STM32_TIMER_NUMBER, _IRQn)
-#define TIMX_IRQHandler         UAVCAN_STM32_GLUE3(TIM, UAVCAN_STM32_TIMER_NUMBER, _IRQHandler)
+#define TIMX                    UAVCAN_STM32_GLUE2(STM32_TIM, UAVCAN_STM32_TIMER_NUMBER)
+#define TIMX_NUMBER             UAVCAN_STM32_GLUE3(STM32_TIM, UAVCAN_STM32_TIMER_NUMBER, _NUMBER)
+#define TIMX_IRQ_HANDLER        UAVCAN_STM32_GLUE3(STM32_TIM, UAVCAN_STM32_TIMER_NUMBER, _HANDLER)
 
 #if UAVCAN_STM32_TIMER_NUMBER >= 2 && UAVCAN_STM32_TIMER_NUMBER <= 7
 # define TIMX_RCC_ENR           RCC->APB1ENR
@@ -72,7 +72,7 @@ void init()
     TIMX_RCC_RSTR &= ~TIMX_RCC_RSTR_MASK;
 
     // Enable IRQ
-    nvicEnableVector(TIMX_IRQn,  UAVCAN_STM32_IRQ_PRIORITY_MASK);
+    nvicEnableVector(TIMX_NUMBER, UAVCAN_STM32_IRQ_PRIORITY_MASK);
 
 #if (TIMX_INPUT_CLOCK % 1000000) != 0
 # error "No way, timer clock must be divisible to 1e6. FIXME!"
@@ -305,7 +305,7 @@ SystemClock& SystemClock::instance()
  * Timer interrupt handler
  */
 extern "C"
-UAVCAN_STM32_IRQ_HANDLER(TIMX_IRQHandler)
+UAVCAN_STM32_IRQ_HANDLER(TIMX_IRQ_HANDLER)
 {
     UAVCAN_STM32_IRQ_PROLOGUE();
 

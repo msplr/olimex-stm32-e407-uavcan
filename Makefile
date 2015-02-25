@@ -73,12 +73,13 @@ PROJECT = ch
 
 # Imported source files and paths
 CHIBIOS = ChibiOS
-include $(CHIBIOS)/os/hal/platforms/STM32F4xx/platform.mk
+include $(CHIBIOS)/os/hal/ports/STM32/STM32F4xx/platform.mk
 include $(CHIBIOS)/os/hal/hal.mk
-include $(CHIBIOS)/os/ports/GCC/ARMCMx/STM32F4xx/port.mk
-include $(CHIBIOS)/os/kernel/kernel.mk
-include $(CHIBIOS)/test/test.mk
-include $(CHIBIOS)/os/various/cpp_wrappers/kernel.mk
+include $(CHIBIOS)/os/rt/ports/ARMCMx/compilers/GCC/mk/port_stm32f4xx.mk
+include $(CHIBIOS)/os/rt/rt.mk
+include ${CHIBIOS}/os/hal/osal/rt/osal.mk
+include $(CHIBIOS)/test/rt/test.mk
+include $(CHIBIOS)/os/various/cpp_wrappers/chcpp.mk
 include src/board/board.mk
 include src/src.mk
 
@@ -92,10 +93,8 @@ CSRC = $(PORTSRC) \
        $(TESTSRC) \
        $(HALSRC) \
        $(PLATFORMSRC) \
-       $(CHIBIOS)/os/various/evtimer.c \
-       $(CHIBIOS)/os/various/chprintf.c \
+       $(CHIBIOS)/os/hal/lib/streams/chprintf.c \
        $(CHIBIOS)/os/various/syscalls.c \
-       $(CHIBIOS)/os/various/shell.c \
        $(BOARDSRC) \
        $(addprefix src/, $(PROJCSRC))
 
@@ -128,6 +127,7 @@ ASMSRC = $(PORTASM)
 
 INCDIR += $(PORTINC) $(KERNINC) $(TESTINC) \
           $(HALINC) $(PLATFORMINC) $(BOARDINC) \
+          $(OSALINC) \
           $(CHIBIOS)/os/various \
           $(CHCPPINC) \
 
@@ -204,7 +204,7 @@ DLIBS =
 UDEFS  = -DUAVCAN_STM32_CHIBIOS=1 \
 		 -DUAVCAN_TOSTRING=0 \
 		 -DUAVCAN_STM32_NUM_IFACES=1 \
-		 -DUAVCAN_STM32_TIMER_NUMBER=2 \
+		 -DUAVCAN_STM32_TIMER_NUMBER=3 \
 		 -DUAVCAN_TINY=0
 
 # Define ASM defines here
@@ -235,7 +235,7 @@ $(info $(shell $(LIBUAVCAN_DSDLC) uavcan-dsdl/uavcan))
 # End of user defines
 ##############################################################################
 
-RULESPATH = $(CHIBIOS)/os/ports/GCC/ARMCMx
+RULESPATH = $(CHIBIOS)/os/common/ports/ARMCMx/compilers/GCC
 include $(RULESPATH)/rules.mk
 
 flash: build/$(PROJECT).elf
