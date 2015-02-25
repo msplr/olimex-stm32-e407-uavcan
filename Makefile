@@ -229,7 +229,7 @@ CPPSRC += $(LIBUAVCAN_SRC) $(LIBUAVCAN_STM32_SRC)
 UINCDIR += $(LIBUAVCAN_INC) $(LIBUAVCAN_STM32_INC) ./dsdlc_generated
 
 # run uavcan dsdl compiler
-$(info $(shell $(LIBUAVCAN_DSDLC) $(UAVCAN_DSDL_DIR)))
+$(info $(shell $(LIBUAVCAN_DSDLC) uavcan-dsdl/uavcan))
 
 #
 # End of user defines

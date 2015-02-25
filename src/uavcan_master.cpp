@@ -12,17 +12,8 @@
 #include "debug.h"
 #include <errno.h>
 
-#define SERVER 0
-#define SERVER_NODE_ID 1
-#define CLIENT_NODE_ID 2
-
-#if SERVER
-#define UAVCAN_NODE_ID SERVER_NODE_ID
+#define UAVCAN_NODE_ID 1
 #include <uavcan/protocol/global_time_sync_master.hpp>
-#else
-#define UAVCAN_NODE_ID CLIENT_NODE_ID
-#include <uavcan/protocol/global_time_sync_slave.hpp>
-#endif
 
 namespace app
 {
@@ -68,30 +59,30 @@ void die(int status)
 
 void node_status_cb(const uavcan::ReceivedDataStructure<uavcan::protocol::NodeStatus>& msg)
 {
-    const uint8_t st = msg.status_code;
-    const char *st_name;
-    switch (st) {
-        case 0:
-            st_name = "STATUS_OK";
-            break;
-        case 1:
-            st_name = "STATUS_INITIALIZING";
-            break;
-        case 2:
-            st_name = "STATUS_WARNING";
-            break;
-        case 3:
-            st_name = "STATUS_CRITICAL";
-            break;
-        case 15:
-            st_name = "STATUS_OFFLINE";
-            break;
-        default:
-            st_name = "UNKNOWN_STATUS";
-            break;
-    }
-    palTogglePad(GPIOC, GPIOC_LED);
+    // const uint8_t st = msg.status_code;
+    // const char *st_name;
+    // switch (st) {
+    //     case 0:
+    //         st_name = "STATUS_OK";
+    //         break;
+    //     case 1:
+    //         st_name = "STATUS_INITIALIZING";
+    //         break;
+    //     case 2:
+    //         st_name = "STATUS_WARNING";
+    //         break;
+    //     case 3:
+    //         st_name = "STATUS_CRITICAL";
+    //         break;
+    //     case 15:
+    //         st_name = "STATUS_OFFLINE";
+    //         break;
+    //     default:
+    //         st_name = "UNKNOWN_STATUS";
+    //         break;
+    // }
     // lowsyslog("NodeStatus from %d: %u (%s)\n", msg.getSrcNodeID().get(), st, st_name);
+    palTogglePad(GPIOC, GPIOC_LED);
 }
 
 class : public chibios_rt::BaseStaticThread<8192>
@@ -154,7 +145,6 @@ public:
         /*
          * Time synchronizer
          */
-#if SERVER
         lowsyslog("Time sync server init\n");
         uavcan::UtcDuration adjustment;
         uint64_t utc_time_init = 1234;
@@ -169,19 +159,8 @@ public:
                 die(res);
             }
         }
-#else
-        lowsyslog("Time sync slave start\n");
-        static uavcan::GlobalTimeSyncSlave time_sync_slave(node);
-        {
-            const int res = time_sync_slave.start();
-            if (res < 0)
-            {
-                die(res);
-            }
-        }
-#endif
 
-#if SERVER
+        // test service server
         lowsyslog("Test server start\n");
         using uavcan::test::ServiceCallStorm;
         uavcan::ServiceServer<ServiceCallStorm> server(node);
@@ -189,7 +168,7 @@ public:
             const int res = server.start(
                 [&](const uavcan::ReceivedDataStructure<ServiceCallStorm::Request>& req, ServiceCallStorm::Response& resp) {
                 uint8_t b = req.request;
-                lowsyslog("req %u, from %u\n", b, req.getSrcNodeID().get());
+                // lowsyslog("req %u, from %u\n", b, req.getSrcNodeID().get());
                 resp.response = b + 1;
             });
             if (res < 0)
@@ -197,26 +176,6 @@ public:
                 die(res);
             }
         }
-#else
-        lowsyslog("Test client start\n");
-        using uavcan::test::ServiceCallStorm;
-        uavcan::ServiceClient<ServiceCallStorm> client(node);
-        {
-            const int res = client.init();
-            if (res < 0)
-            {
-                die(res);
-            }
-        }
-        client.setCallback([](const uavcan::ServiceCallResult<ServiceCallStorm>& call_result)
-        {
-            if (call_result.isSuccessful()) {
-                lowsyslog("%d\n", call_result.response);
-            } else {
-                lowsyslog("service call failed");
-            }
-        });
-#endif
 
         lowsyslog("NodeStatus subscriber start\n");
         /*
@@ -242,28 +201,12 @@ public:
                 lowsyslog("Spin failure: %i\n", spin_res);
             }
 
-#if SERVER
             time_sync_master.publish();
 
             // uavcan::MonotonicTime mono_time = node.getMonotonicTime();
             // uavcan::UtcTime utc_time = node.getUtcTime();
             // lowsyslog("Time: Monotonic: %U   UTC: %U\n",
             //             mono_time.toUSec(), utc_time.toUSec());
-#else
-            // const bool active = time_sync_slave.isActive();
-            // const int master_node_id = time_sync_slave.getMasterNodeID().get();
-            // const long msec_since_last_adjustment = (node.getMonotonicTime() - time_sync_slave.getLastAdjustmentTime()).toMSec();
-            // lowsyslog("Time sync master Node ID: %d, Active: %d\n"
-            //           "    Last adjust %d ms ago, Monotonic: %U UTC: %U\n\n",
-            //           master_node_id, int(active), msec_since_last_adjustment,
-            //           node.getMonotonicTime().toUSec(), node.getUtcTime().toUSec());
-
-            static int counter = 0;
-            ServiceCallStorm::Request req;
-            req.request = counter++;
-            client.call(SERVER_NODE_ID, req);
-#endif
-
             // lowsyslog("Memory usage: used=%u free=%u\n", node.getAllocator().getNumUsedBlocks(), node.getAllocator().getNumFreeBlocks());
             lowsyslog("CAN errors: %lu\n", static_cast<unsigned long>(can.driver.getIface(0)->getErrorCount()));
         }

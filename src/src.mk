@@ -1,4 +1,5 @@
 
 PROJCSRC = main.c
 
-PROJCPPSRC = uavcan_node.cpp
+#PROJCPPSRC = uavcan_master.cpp
+PROJCPPSRC = uavcan_slave.cpp
