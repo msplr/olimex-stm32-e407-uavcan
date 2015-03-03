@@ -130,6 +130,8 @@ INCDIR += $(PORTINC) $(KERNINC) $(TESTINC) \
           $(OSALINC) \
           $(CHIBIOS)/os/various \
           $(CHCPPINC) \
+          $(CHIBIOS)/os/hal/lib/streams/ \
+          ./src
 
 #
 # Project, sources and paths

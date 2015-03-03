@@ -1,6 +1,6 @@
 #include <hal.h>
 #include <stdarg.h>
-// #include <chprintf.h>
+#include <chprintf.h>
 #include "uavcan_node.h"
 
 void panic_hook(const char *reason);
