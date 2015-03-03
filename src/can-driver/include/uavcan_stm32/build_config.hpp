@@ -5,17 +5,6 @@
 #pragma once
 
 /**
- * OS detection
- */
-#ifndef UAVCAN_STM32_CHIBIOS
-# define UAVCAN_STM32_CHIBIOS 0
-#endif
-
-#ifndef UAVCAN_STM32_NUTTX
-# define UAVCAN_STM32_NUTTX 0
-#endif
-
-/**
  * Number of interfaces must be enabled explicitly
  */
 #if !defined(UAVCAN_STM32_NUM_IFACES) || (UAVCAN_STM32_NUM_IFACES != 1 && UAVCAN_STM32_NUM_IFACES != 2)
